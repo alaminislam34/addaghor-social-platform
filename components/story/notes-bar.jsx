@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Plus, Music } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Image from "next/image"; // Next.js Optimized Image
+
 import {
   Dialog,
   DialogContent,
@@ -12,158 +13,180 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+
 import { useAuth } from "@/hooks/use-auth";
 import { getInitials, formatDate } from "@/lib/utils";
 import { getNotes, createNote } from "@/lib/api";
 
 export function NotesBar() {
   const { user } = useAuth();
+
   const [notes, setNotes] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [showNoteDialog, setShowNoteDialog] = useState(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [viewNote, setViewNote] = useState(null);
   const [newNote, setNewNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const fetchNotes = async () => {
+    let mounted = true;
+    (async () => {
       try {
         const data = await getNotes();
-        setNotes(data);
-      } catch (error) {
-        console.error("Error fetching notes:", error);
+        if (mounted) setNotes(data);
+      } catch (err) {
+        console.error("Failed to fetch notes:", err);
       } finally {
-        setIsLoading(false);
+        if (mounted) setIsLoading(false);
       }
+    })();
+    return () => {
+      mounted = false;
     };
-    fetchNotes();
   }, []);
 
-  const handleCreateNote = async () => {
-    if (!newNote.trim()) return;
-
+  const handleCreateNote = useCallback(async () => {
+    if (!newNote.trim() || !user) return;
     setIsSubmitting(true);
     try {
-      const note = await createNote(newNote);
+      const note = await createNote(newNote.trim());
       setNotes((prev) => [{ ...note, user }, ...prev]);
       setNewNote("");
-      setShowCreateDialog(false);
-    } catch (error) {
-      console.error("Error creating note:", error);
+      setCreateOpen(false);
+    } catch (err) {
+      console.error("Failed to create note:", err);
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [newNote, user]);
 
   return (
-    <>
-      <div className="bg-card rounded-xl border p-4 mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold">Notes</h3>
-          <span className="text-xs text-muted-foreground">24h</span>
-        </div>
+    <section
+      aria-labelledby="notes-title"
+      className="rounded-xl border bg-card p-4 shadow-sm"
+    >
+      <header className="mb-3 flex items-center justify-between">
+        <h2 id="notes-title" className="font-semibold text-foreground">
+          User Status Notes
+        </h2>
+        <span
+          className="text-xs text-muted-foreground"
+          title="Notes expire in 24 hours"
+        >
+          24h
+        </span>
+      </header>
 
-        <div className="flex gap-3 overflow-x-auto hide-scrollbar py-1">
-          {/* Create note button */}
-          <button
-            onClick={() => setShowCreateDialog(true)}
-            className="flex flex-col items-center gap-2 min-w-20"
-          >
-            <div className="relative">
-              <Avatar className="h-14 w-14 border-2 border-dashed border-muted-foreground/30">
-                <AvatarImage
-                  src={user?.avatar || "/placeholder.svg"}
-                  alt={user?.name}
-                />
-                <AvatarFallback>
-                  {user ? getInitials(user.name) : "U"}
-                </AvatarFallback>
-              </Avatar>
-              <div className="absolute -bottom-1 -right-1 p-1 bg-primary rounded-full border-2 border-card">
-                <Plus className="h-3 w-3 text-primary-foreground" />
-              </div>
+      <div className="flex gap-3 overflow-x-auto py-1 hide-scrollbar">
+        {/* Create Note Button */}
+        <button
+          type="button"
+          aria-label="Create a new status note"
+          onClick={() => setCreateOpen(true)}
+          className="flex min-w-20 flex-col items-center gap-2 group"
+        >
+          <div className="relative h-14 w-14 overflow-hidden rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center bg-muted/20 group-hover:border-primary transition-all">
+            {user?.avatar ? (
+              <Image
+                src={user.avatar}
+                alt={`${user.name}'s profile picture`}
+                width={56}
+                height={56}
+                className="object-cover"
+              />
+            ) : (
+              <span className="text-sm font-medium">
+                {user ? getInitials(user.name) : "U"}
+              </span>
+            )}
+            <span className="absolute -bottom-1 -right-1 z-10 rounded-full border-2 border-card bg-primary p-1">
+              <Plus className="h-3 w-3 text-primary-foreground" />
+            </span>
+          </div>
+          <span className="text-xs text-muted-foreground">Add note</span>
+        </button>
+
+        {/* Loading Skeleton */}
+        {isLoading &&
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex min-w-20 flex-col items-center gap-2">
+              <Skeleton className="h-14 w-14 rounded-full" />
+              <Skeleton className="h-3 w-10" />
             </div>
-            <span className="text-xs text-muted-foreground">Add note</span>
-          </button>
+          ))}
 
-          {/* Notes */}
-          {isLoading
-            ? Array.from({ length: 3 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="flex flex-col items-center gap-2 min-w-20"
-                >
-                  <Skeleton className="h-14 w-14 rounded-full" />
-                  <Skeleton className="h-3 w-10" />
+        {/* Notes List */}
+        {!isLoading &&
+          notes.map((note) => (
+            <button
+              key={note.id}
+              type="button"
+              title={`View note from ${note.user.name}`}
+              onClick={() => setViewNote(note)}
+              className="group flex min-w-20 flex-col items-center gap-2"
+            >
+              <div className="relative">
+                <div className="h-14 w-14 overflow-hidden rounded-full border-2 border-primary/30 transition-colors group-hover:border-primary">
+                  <Image
+                    src={note.user.avatar || "/placeholder.svg"}
+                    alt={`${note.user.name}'s status`}
+                    width={56}
+                    height={56}
+                    className="object-cover"
+                    loading="lazy"
+                  />
                 </div>
-              ))
-            : notes.map((note) => (
-                <button
-                  key={note.id}
-                  onClick={() => setShowNoteDialog(note)}
-                  className="flex flex-col items-center gap-2 min-w-20 group"
-                >
-                  <div className="relative">
-                    <Avatar className="h-14 w-14 border-2 border-primary/30 group-hover:border-primary transition-colors">
-                      <AvatarImage
-                        src={note.user?.avatar || "/placeholder.svg"}
-                        alt={note.user?.name}
-                      />
-                      <AvatarFallback>
-                        {note.user ? getInitials(note.user.name) : "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-card border rounded-full shadow-sm">
-                      <p className="text-[10px] truncate max-w-15">
-                        {note.content.slice(0, 8)}...
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-xs text-muted-foreground truncate max-w-17.5">
-                    {note.user?.name?.split(" ")[0]}
-                  </span>
-                </button>
-              ))}
-        </div>
+
+                <div className="absolute -top-2 left-1/2 z-10 -translate-x-1/2 rounded-full border bg-card px-2 py-0.5 shadow-sm max-w-17.5">
+                  <p className="truncate text-[10px] font-medium leading-tight">
+                    {note.content}
+                  </p>
+                </div>
+              </div>
+
+              <span className="max-w-20 truncate text-xs text-muted-foreground">
+                {note.user.name.split(" ")[0]}
+              </span>
+            </button>
+          ))}
       </div>
 
-      {/* Create Note Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+      {/* DIALOGS (CREATE & VIEW) */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>New Note</DialogTitle>
+            <DialogTitle>Share a Thought</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Share a quick thought with your friends. Notes expire after 24
-              hours.
-            </p>
             <Textarea
-              placeholder="What's on your mind?"
+              aria-label="Note content"
               value={newNote}
-              onChange={(e) => setNewNote(e.target.value.slice(0, 60))}
-              className="resize-none"
               maxLength={60}
+              onChange={(e) => setNewNote(e.target.value)}
+              placeholder="What's on your mind?"
+              className="resize-none"
             />
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>{newNote.length}/60</span>
-              <button className="flex items-center gap-1 hover:text-foreground transition-colors">
-                <Music className="h-4 w-4" />
-                Add music
+              <button
+                type="button"
+                className="flex items-center gap-1 hover:text-foreground"
+              >
+                <Music className="h-4 w-4" /> Add music
               </button>
             </div>
             <div className="flex gap-2">
               <Button
                 variant="outline"
-                className="flex-1 bg-transparent"
-                onClick={() => setShowCreateDialog(false)}
+                className="flex-1"
+                onClick={() => setCreateOpen(false)}
               >
                 Cancel
               </Button>
               <Button
                 className="flex-1"
-                onClick={handleCreateNote}
                 disabled={!newNote.trim() || isSubmitting}
+                onClick={handleCreateNote}
               >
                 {isSubmitting ? "Sharing..." : "Share"}
               </Button>
@@ -172,34 +195,33 @@ export function NotesBar() {
         </DialogContent>
       </Dialog>
 
-      {/* View Note Dialog */}
-      <Dialog
-        open={!!showNoteDialog}
-        onOpenChange={() => setShowNoteDialog(null)}
-      >
+      <Dialog open={!!viewNote} onOpenChange={() => setViewNote(null)}>
         <DialogContent className="sm:max-w-sm">
-          <div className="flex flex-col items-center text-center py-4">
-            <Avatar className="h-20 w-20 mb-4">
-              <AvatarImage
-                src={showNoteDialog?.user?.avatar || "/placeholder.svg"}
-                alt={showNoteDialog?.user?.name}
-              />
-              <AvatarFallback>
-                {showNoteDialog?.user
-                  ? getInitials(showNoteDialog.user.name)
-                  : "U"}
-              </AvatarFallback>
-            </Avatar>
-            <p className="font-semibold">{showNoteDialog?.user?.name}</p>
-            <p className="text-xs text-muted-foreground mb-4">
-              {showNoteDialog && formatDate(showNoteDialog.createdAt)}
-            </p>
-            <div className="px-6 py-4 bg-secondary rounded-xl">
-              <p className="text-lg">{showNoteDialog?.content}</p>
-            </div>
-          </div>
+          {viewNote && (
+            <article className="flex flex-col items-center py-4 text-center">
+              <div className="mb-4 h-20 w-20 overflow-hidden rounded-full border-2 border-primary">
+                <Image
+                  src={viewNote.user.avatar || "/placeholder.svg"}
+                  alt={viewNote.user.name}
+                  width={80}
+                  height={80}
+                  className="object-cover"
+                />
+              </div>
+              <h3 className="font-semibold text-lg">{viewNote.user.name}</h3>
+              <time
+                dateTime={viewNote.createdAt}
+                className="mb-4 text-xs text-muted-foreground"
+              >
+                {formatDate(viewNote.createdAt)}
+              </time>
+              <div className="rounded-xl bg-secondary px-6 py-4 shadow-inner">
+                <p className="text-lg leading-relaxed">{viewNote.content}</p>
+              </div>
+            </article>
+          )}
         </DialogContent>
       </Dialog>
-    </>
+    </section>
   );
 }

@@ -40,9 +40,7 @@ export default function MainLayout({ children }) {
       <Header onMenuClick={() => setSidebarOpen(true)} />
 
       <div className="flex max-w-360 mx-auto w-11/12">
-        <div className="sticky top-0">
-          <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        </div>
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <main className="flex-1 min-h-[calc(100vh-3.5rem)] pb-20 md:pb-0">
           {children}

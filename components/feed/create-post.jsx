@@ -170,7 +170,7 @@ export function CreatePost({ onPostCreated }) {
               placeholder={`What's on your mind, ${user?.name?.split(" ")[0]}?`}
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              className="min-h-[120px] border-0 resize-none text-lg placeholder:text-muted-foreground focus-visible:ring-0 p-0"
+              className="min-h-30 border-0 resize-none text-lg placeholder:text-muted-foreground focus-visible:ring-0 p-0"
             />
 
             {/* Image previews */}

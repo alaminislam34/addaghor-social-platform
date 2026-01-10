@@ -200,7 +200,7 @@ export function PostCard({ post, onDelete, onUpdate }) {
       {post.images?.length > 0 && (
         <div
           className={cn(
-            "grid gap-0.5",
+            "grid gap-0.5 border",
             post.images.length === 1 && "grid-cols-1",
             post.images.length === 2 && "grid-cols-2",
             post.images.length === 3 && "grid-cols-2",
@@ -212,7 +212,7 @@ export function PostCard({ post, onDelete, onUpdate }) {
               key={index}
               onClick={() => openImage(index)}
               className={cn(
-                "relative overflow-hidden bg-muted",
+                "relative z-1 overflow-hidden bg-muted",
                 post.images.length === 1 && "aspect-video",
                 post.images.length === 2 && "aspect-square",
                 post.images.length === 3 &&
@@ -226,7 +226,7 @@ export function PostCard({ post, onDelete, onUpdate }) {
                 src={img || "/placeholder.svg"}
                 alt={`Post image ${index + 1}`}
                 fill
-                className="object-cover hover:scale-105 transition-transform duration-300"
+                className="object-cover transition-transform duration-300"
               />
               {index === 3 && post.images.length > 4 && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
