@@ -40,7 +40,7 @@ export function StoryBar() {
       if (container) {
         setCanScrollLeft(container.scrollLeft > 0);
         setCanScrollRight(
-          container.scrollLeft < container.scrollWidth - container.clientWidth
+          container.scrollLeft < container.scrollWidth - container.clientWidth,
         );
       }
     };
@@ -113,7 +113,7 @@ export function StoryBar() {
               className="flex flex-col items-center gap-1 min-w-19"
             >
               <div className="relative">
-                <Avatar className="md:h-16 md:w-16 w-14 h-14 border-2 border-muted">
+                <Avatar className="md:h-16 md:w-16 w-14 h-14 border-2 border-black">
                   <AvatarImage
                     src={user?.avatar || "/placeholder.svg"}
                     alt={user?.name}
@@ -151,7 +151,7 @@ export function StoryBar() {
                     <div
                       className={cn(
                         "p-0.5 rounded-full bg-linear-to-tr from-primary via-primary to-primary/50",
-                        "group-hover:scale-105 transition-transform"
+                        "group-hover:scale-105 transition-transform",
                       )}
                     >
                       <Avatar className="h-16 w-16 border-2 border-card">
